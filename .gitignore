@@ -1,0 +1,23 @@
+# Neovim
+*.swp
+*.swo
+*~
+
+# Lua
+luac.out
+*.luac
+
+# Testing
+/lua-language-server
+.luarc.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
