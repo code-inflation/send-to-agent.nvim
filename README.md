@@ -11,12 +11,21 @@ A minimal, efficient Neovim plugin that seamlessly sends filename references to 
 - **Relative Paths**: Intelligent path resolution from git root
 - **Auto Pane Switching**: Seamlessly switch to agent pane after sending
 - **Pure Lua**: Modern Neovim plugin with no dependencies
+- **Single File**: Simple 420-line implementation for easy understanding and debugging
 
 ## 📦 Installation
+
+> **🔥 TRUE SINGLE-FILE PLUGIN** - Just one Lua file contains everything!
 
 ### lazy.nvim
 
 ```lua
+{
+  "cybuerg/send-to-agent.nvim",
+  config = true  -- Auto-calls setup()
+}
+
+-- Or with custom config:
 {
   "cybuerg/send-to-agent.nvim",
   config = function()
@@ -38,11 +47,47 @@ use {
 }
 ```
 
+### vim-plug
+
+```vim
+Plug 'cybuerg/send-to-agent.nvim'
+
+" In your init.lua:
+lua require('send-to-agent').setup()
+```
+
+### paq-nvim
+
+```lua
+require "paq" {
+  "cybuerg/send-to-agent.nvim",
+}
+
+-- Then in your config:
+require('send-to-agent').setup()
+```
+
 ### Manual Installation
 
 ```bash
 git clone https://github.com/cybuerg/send-to-agent.nvim ~/.local/share/nvim/site/pack/plugins/start/send-to-agent.nvim
+
+# Then add to your init.lua:
+require('send-to-agent').setup()
 ```
+
+### 🚀 Ultra-Minimal Install
+
+**Copy just ONE file:**
+```bash
+# Copy the single file to your config
+cp lua/send-to-agent.lua ~/.config/nvim/lua/
+
+# Add ONE line to your init.lua:
+require('send-to-agent').setup()
+```
+
+**That's it!** Commands `:SendToAgent`, `:SendToAgentSelection`, `:SendToAgentDetect` are now available.
 
 ## 📋 Requirements
 
@@ -224,18 +269,15 @@ ls -la [filepath]
 ## 🧪 Testing
 
 ```bash
-# Run tests
+# Run automated tmux integration test
 make test
 
-# Lint code
-make lint
-
-# Format code
-make format
-
-# Run all checks
-make ci
+# Test in live Neovim session (for development)
+make dev
 ```
+
+### Development Testing
+The `make dev` command opens Neovim with the plugin loaded from the current directory, allowing you to test commands like `:SendToAgent` in a real environment with your tmux agents.
 
 ## 📝 API Reference
 

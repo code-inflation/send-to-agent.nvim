@@ -33,11 +33,18 @@ This is a **Lua-based Neovim plugin** with the following planned structure:
 
 ## Development Commands
 
-**Note**: This is a new project with no build system yet. Based on the PLAN.md, testing will use:
+### Testing
+- **Unit tests**: `make test` - runs tmux integration tests
+- **Manual testing**: `make dev` - opens nvim with plugin loaded from current directory
+- **Requirements**: tmux and AI agents (claude, opencode, gemini)
 
-- **Testing framework**: busted or plenary (to be determined)
-- **Manual testing**: Requires tmux and AI agents (claude, opencode, gemini)
-- **No build process**: Pure Lua plugin, no compilation needed
+### Development Workflow
+1. Make changes to `lua/send-to-agent.lua`
+2. Run `make dev` to test in live nvim session
+3. Test commands: `:SendToAgent`, `:SendToAgentSelection`, `:SendToAgentDetect`
+4. Run `make test` for automated testing
+
+**No build process needed** - Pure Lua plugin, single file implementation
 
 ## Supported AI Agents
 
