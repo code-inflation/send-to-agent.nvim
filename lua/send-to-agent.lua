@@ -28,6 +28,8 @@
 ---@field command string Command running in pane
 ---@field window_name string Window name
 ---@field agent_type string Detected agent type
+---@field session_name string Tmux session name
+---@field window_index number Tmux window index
 
 -- =============================================================================
 -- CONFIGURATION
@@ -159,6 +161,28 @@ end
 -- TMUX INTEGRATION
 -- =============================================================================
 
+---Get current tmux context (session and window)
+---@return string?, number? Current session name and window index, or nil if not in tmux
+local function get_current_context()
+  if not is_tmux_available() then
+    return nil, nil
+  end
+
+  local result = vim.system({
+    "tmux",
+    "display-message",
+    "-p",
+    "#{session_name}|#{window_index}",
+  }, { capture = true }):wait()
+
+  if result.code ~= 0 or not result.stdout then
+    return nil, nil
+  end
+
+  local session_name, window_index = result.stdout:match("([^|]+)|([^|]*)")
+  return session_name, tonumber(window_index)
+end
+
 ---Get all tmux panes with their details
 ---@return AgentPane[]? List of panes or nil if tmux unavailable
 local function get_all_panes()
@@ -171,7 +195,7 @@ local function get_all_panes()
     "list-panes",
     "-a",
     "-F",
-    "#{pane_id}|#{pane_current_command}|#{window_name}",
+    "#{pane_id}|#{pane_current_command}|#{window_name}|#{session_name}|#{window_index}",
   }, { capture = true }):wait()
 
   if result.code ~= 0 then
@@ -180,13 +204,15 @@ local function get_all_panes()
 
   local panes = {}
   for line in result.stdout:gmatch("[^\r\n]+") do
-    local pane_id, command, window_name = line:match("([^|]+)|([^|]+)|([^|]*)")
+    local pane_id, command, window_name, session_name, window_index = line:match("([^|]+)|([^|]+)|([^|]*)|([^|]*)|([^|]*)")
     if pane_id and command then
       table.insert(panes, {
         pane_id = pane_id,
         command = command,
         window_name = window_name or "",
         agent_type = "",
+        session_name = session_name or "",
+        window_index = tonumber(window_index) or 0,
       })
     end
   end
@@ -194,7 +220,7 @@ local function get_all_panes()
   return panes
 end
 
----Detect AI agent panes from tmux panes
+---Detect AI agent panes from tmux panes (session-scoped)
 ---@return AgentPane[]? List of detected agent panes
 local function detect_agent_panes()
   local panes = get_all_panes()
@@ -202,15 +228,24 @@ local function detect_agent_panes()
     return nil
   end
 
+  -- Get current session context
+  local current_session, _ = get_current_context()
+  if not current_session then
+    return nil -- Not in tmux
+  end
+
   local current_config = get_config()
   local agent_panes = {}
 
+  -- Filter panes to current session only and detect agents
   for _, pane in ipairs(panes) do
-    for _, pattern in ipairs(current_config.agents.patterns) do
-      if pane.command:match(pattern) then
-        pane.agent_type = pattern
-        table.insert(agent_panes, pane)
-        break
+    if pane.session_name == current_session then -- Only consider panes in current session
+      for _, pattern in ipairs(current_config.agents.patterns) do
+        if pane.command:match(pattern) then
+          pane.agent_type = pattern
+          table.insert(agent_panes, pane)
+          break
+        end
       end
     end
   end
@@ -218,7 +253,7 @@ local function detect_agent_panes()
   return agent_panes
 end
 
----Select the best agent pane based on priority
+---Select the best agent pane based on context-aware priority
 ---@param agent_panes AgentPane[] List of agent panes
 ---@return AgentPane? Selected agent pane
 local function select_best_agent(agent_panes)
@@ -230,18 +265,38 @@ local function select_best_agent(agent_panes)
     return agent_panes[1]
   end
 
+  -- Get current context
+  local current_session, current_window = get_current_context()
+  if not current_session or not current_window then
+    -- Fallback to old behavior if context unavailable
+    return agent_panes[1]
+  end
+
   local current_config = get_config()
 
-  -- Select based on priority order
+  -- Priority 1: Same window agents (highest priority)
   for _, priority_agent in ipairs(current_config.agents.priority_order) do
     for _, pane in ipairs(agent_panes) do
-      if pane.agent_type == priority_agent then
+      if pane.agent_type == priority_agent 
+         and pane.session_name == current_session 
+         and pane.window_index == current_window then
         return pane
       end
     end
   end
 
-  -- Fallback to first available
+  -- Priority 2: Same session, different window agents (fallback)
+  for _, priority_agent in ipairs(current_config.agents.priority_order) do
+    for _, pane in ipairs(agent_panes) do
+      if pane.agent_type == priority_agent 
+         and pane.session_name == current_session then
+        return pane
+      end
+    end
+  end
+
+  -- This should not happen since we already filter by session in detect_agent_panes
+  -- But as a final fallback
   return agent_panes[1]
 end
 
@@ -302,7 +357,12 @@ local function send_to_agent(text)
   end
 
   if #agent_panes == 0 then
-    return false, "No AI agents detected in tmux panes"
+    local current_session, _ = get_current_context()
+    if current_session then
+      return false, string.format("No AI agents detected in current tmux session '%s'", current_session)
+    else
+      return false, "No AI agents detected in tmux panes"
+    end
   end
 
   local selected_pane = select_best_agent(agent_panes)
@@ -320,7 +380,16 @@ local function send_to_agent(text)
     switch_to_pane(selected_pane.pane_id)
   end
 
-  notify(string.format("Sent to %s agent in pane %s", selected_pane.agent_type, selected_pane.pane_id))
+  -- Show context-aware notification
+  local context_info = ""
+  local current_session, current_window = get_current_context()
+  if current_session and current_window and selected_pane.window_index == current_window then
+    context_info = " (same window)"
+  elseif current_session and selected_pane.window_index ~= current_window then
+    context_info = string.format(" (window %d)", selected_pane.window_index)
+  end
+  
+  notify(string.format("Sent to %s agent in pane %s%s", selected_pane.agent_type, selected_pane.pane_id, context_info))
   return true
 end
 
