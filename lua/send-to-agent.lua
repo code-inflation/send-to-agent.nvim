@@ -41,8 +41,8 @@ local M = {}
 ---@type SendToAgentConfig
 local defaults = {
   agents = {
-    patterns = { "claude", "opencode", "gemini" },
-    priority_order = { "claude", "opencode", "gemini" },
+    patterns = { "claude", "codex", "cursor-agent", "opencode", "gemini" },
+    priority_order = { "claude", "codex", "cursor-agent", "opencode", "gemini" },
   },
   tmux = {
     auto_switch_pane = true,

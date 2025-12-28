@@ -6,7 +6,7 @@ Send filename references (`@filename.ext`) to AI CLI agents running in tmux pane
 
 - **Neovim 0.9+**
 - **tmux**
-- **AI CLI agent** (claude, opencode, or gemini)
+- **AI CLI agent** (claude, codex, cursor-agent, opencode, or gemini)
 
 ## Installation
 
@@ -46,8 +46,8 @@ vim.keymap.set('n', '<leader>sd', '<Plug>(SendToAgentDetect)', { desc = 'Detect 
 ```lua
 require("send-to-agent").setup({
   agents = {
-    patterns = { "claude", "opencode", "gemini" },
-    priority_order = { "claude", "opencode", "gemini" },
+    patterns = { "claude", "codex", "cursor-agent", "opencode", "gemini" },
+    priority_order = { "claude", "codex", "cursor-agent", "opencode", "gemini" },
   },
   tmux = {
     auto_switch_pane = true,
