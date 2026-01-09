@@ -43,6 +43,8 @@ vim.keymap.set('n', '<leader>sd', '<Plug>(SendToAgentDetect)', { desc = 'Detect 
 
 ## Configuration
 
+### Default Configuration
+
 ```lua
 require("send-to-agent").setup({
   agents = {
@@ -56,5 +58,97 @@ require("send-to-agent").setup({
     relative_paths = true,
     include_line_numbers = true,
   },
+})
+```
+
+### Configuration Options
+
+#### `agents.patterns` (table)
+List of agent command patterns to detect in tmux panes.
+- **Default**: `{ "claude", "codex", "cursor-agent", "opencode", "gemini" }`
+- **Example**: Add custom agents
+  ```lua
+  agents = {
+    patterns = { "claude", "codex", "my-custom-agent" }
+  }
+  ```
+
+#### `agents.priority_order` (table)
+Priority order for selecting which agent to send to when multiple agents are detected.
+- **Default**: `{ "claude", "codex", "cursor-agent", "opencode", "gemini" }`
+- **Priority Rules**:
+  1. Agents in the same tmux window (highest priority)
+  2. Agents in the same session, different window
+  3. Follows the order specified in `priority_order`
+
+- **Example**: Prefer gemini over claude
+  ```lua
+  agents = {
+    patterns = { "claude", "gemini", "codex" },
+    priority_order = { "gemini", "claude", "codex" }  -- gemini has highest priority
+  }
+  ```
+
+#### `tmux.auto_switch_pane` (boolean)
+Automatically switch focus to the agent pane after sending.
+- **Default**: `true`
+- **Example**: Keep focus in current pane
+  ```lua
+  tmux = {
+    auto_switch_pane = false
+  }
+  ```
+
+#### `formatting.relative_paths` (boolean)
+Use relative paths from git root when available.
+- **Default**: `true`
+- **Example**: Always use absolute paths
+  ```lua
+  formatting = {
+    relative_paths = false
+  }
+  ```
+
+#### `formatting.include_line_numbers` (boolean)
+Include line numbers in selection references (`@file.ext#L1-5`).
+- **Default**: `true`
+
+### Configuration Examples
+
+#### Minimal (use all defaults)
+```lua
+require("send-to-agent").setup()
+```
+
+#### Custom agents only
+```lua
+require("send-to-agent").setup({
+  agents = {
+    patterns = { "my-agent", "another-agent" },
+    priority_order = { "my-agent", "another-agent" }
+  }
+})
+```
+
+#### Extend default agents
+```lua
+local defaults = { "claude", "codex", "cursor-agent", "opencode", "gemini" }
+local custom_agents = { "my-agent", "aider" }
+
+require("send-to-agent").setup({
+  agents = {
+    patterns = vim.list_extend(vim.deepcopy(defaults), custom_agents),
+    priority_order = vim.list_extend(vim.deepcopy(defaults), custom_agents)
+  }
+})
+```
+
+#### Change agent priority
+```lua
+require("send-to-agent").setup({
+  agents = {
+    -- Keep all default agents, but prioritize cursor-agent first
+    priority_order = { "cursor-agent", "claude", "codex", "opencode", "gemini" }
+  }
 })
 ```
